@@ -19,14 +19,14 @@ img_size = 32
 batch_size =32
 task_size = 10
 memory_size = 2000
-learning_rate = 2.0
+learning_rate = 0.1
 
 config = dict(
     img_size=32,
     batch_size=128,
     task_size=10,
     memory_size=2000,
-    learning_rate=2.0,
+    learning_rate=0.1,
 )
 
 
@@ -51,14 +51,26 @@ if __name__ == '__main__':
         type=str,
         default='resnet'
     )
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=128
+    )
+    parser.add_argument(
+        '--learning_rate',
+        type=float,
+        default=0.1,
+    )
     os.environ['WANDB_MODE'] = 'offline'
     args = parser.parse_args()
     if args.online:
         os.environ['WANDB_MODE'] = 'online'
     feature_extractor = models.get_feature_extractor(args.feature_extractor)
-    model = iCaRLmodel(numclass, feature_extractor, batch_size, task_size, memory_size, args.epochs, learning_rate)
+    model = iCaRLmodel(numclass, feature_extractor, args.batch_size, task_size, memory_size, args.epochs, args.learning_rate)
     # model.model.load_state_dict(torch.load('model/ownTry_accuracy:84.000_KNN_accuracy:84.000_increment:10_net.pkl'))
     config["epochs"] = args.epochs
+    config["batch_size"] = args.batch_size
+    config["learning_rate"] = args.learning_rate
     # wandb.watch(model.model)
 
     for i in range(10):

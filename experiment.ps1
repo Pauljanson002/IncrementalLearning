@@ -1,1 +1,1 @@
-python -u train.py --epochs 2 --project_name icarlonvit --feature_extractor vit_lite
+python -u train.py --epochs 100 --project_name icarlonvit --feature_extractor vit_lite --online --batch_size 128 --learning_rate 0.1
