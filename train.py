@@ -48,6 +48,7 @@ if __name__ == '__main__':
     model = iCaRLmodel(numclass, feature_extractor, batch_size, task_size, memory_size, args.epochs, learning_rate)
     # model.model.load_state_dict(torch.load('model/ownTry_accuracy:84.000_KNN_accuracy:84.000_increment:10_net.pkl'))
     config["epochs"] = args.epochs
+    wandb.watch(model.model)
 
     for i in range(10):
         config["task_id"] = i+1
@@ -57,7 +58,6 @@ if __name__ == '__main__':
             reinit=True,
             config=config,
         )
-        wandb.watch(model.model)
         model.beforeTrain()
         accuracy = model.train()
         model.afterTrain(accuracy,task_id=i+1)
