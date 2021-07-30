@@ -5,9 +5,13 @@ import numpy as np
 from torch.nn import functional as F
 from PIL import Image
 import torch.optim as optim
+from tqdm import tqdm
+
 from .Network import network
 from IncrementalDatasets import IncrementalCIFAR100
 from torch.utils.data import DataLoader
+from utils import ensure_dir,save_checkpoint,load_checkpoint
+import copy
 import wandb
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -131,7 +135,8 @@ class iCaRLmodel:
                 print("change learning rate:%.3f" % (self.learning_rate / 100))
             total_loss = 0.
             total_images = 0
-            for step, (indexs, images, target) in enumerate(self.train_loader):
+            for step, (indexs, images, target) in tqdm(enumerate(self.train_loader),total=len(self.train_loader),
+                                                       desc='Training'):
                 images, target = images.to(device), target.to(device)
                 # output = self.model(images)
                 loss_value = self._compute_loss(indexs, images, target)
@@ -140,7 +145,7 @@ class iCaRLmodel:
                 opt.step()
                 total_loss += loss_value.item()
                 total_images += images.size(0)
-                print('epoch:%d,step:%d,loss:%.3f' % (epoch, step, loss_value.item()))
+                # print('epoch:%d,step:%d,loss:%.3f' % (epoch, step, loss_value.item()))
             accuracy = self._test(self.test_loader, 1)
             avg_loss = total_loss/total_images if total_images != 0 else 1000
             wandb.log({
@@ -156,7 +161,7 @@ class iCaRLmodel:
             print("compute NMS")
         self.model.eval()
         correct, total = 0, 0
-        for setp, (indexs, imgs, labels) in enumerate(testloader):
+        for setp, (indexs, imgs, labels) in tqdm(enumerate(testloader),desc="Testing",total=len(testloader)):
             imgs, labels = imgs.to(device), labels.to(device)
             with torch.no_grad():
                 outputs = self.model(imgs) if mode == 1 else self.classify(imgs)
@@ -181,7 +186,7 @@ class iCaRLmodel:
             return F.binary_cross_entropy_with_logits(output, target)
 
     # change the size of examplar
-    def afterTrain(self, accuracy):
+    def afterTrain(self, accuracy,task_id):
         self.model.eval()
         m = int(self.memory_size / self.numclass)
         self._reduce_exemplar_sets(m)
@@ -194,10 +199,18 @@ class iCaRLmodel:
         self.model.train()
         KNN_accuracy = self._test(self.test_loader, 0)
         print("NMS accuracy：" + str(KNN_accuracy.item()))
-        filename = 'saved_models/accuracy_%.3f_KNN_accuracy_%.3f_increment %d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
-        torch.save(self.model, filename)
-        self.old_model = torch.load(filename)
+        directory = '/checkpoint'
+        filename = directory+f'/task_id_{task_id}'
+        state = {
+            'net':self.model.state_dict(),
+            'task_id':task_id,
+            'optim':None,
+        }
+        ensure_dir(directory)
+        save_checkpoint(state,filename)
+        self.old_model = copy.deepcopy(self.model)
         self.old_model.to(device)
+        self.old_model.load_state_dict(load_checkpoint(filename)['net'])
         self.old_model.eval()
 
     def _construct_exemplar_set(self, images, m):

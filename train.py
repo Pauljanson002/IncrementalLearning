@@ -1,3 +1,6 @@
+import argparse
+import os
+
 import wandb
 
 from IncrementalTrainingApproach.iCaRL import iCaRLmodel
@@ -15,31 +18,47 @@ img_size = 32
 batch_size = 128
 task_size = 10
 memory_size = 2000
-epochs = 100
 learning_rate = 2.0
 
-args = dict(
+config = dict(
     feature_extractor=resnet18_cbam(),
     img_size=32,
     batch_size=128,
     task_size=10,
     memory_size=2000,
-    epochs=100,
     learning_rate=2.0,
 )
 
-model = iCaRLmodel(numclass, feature_extractor, batch_size, task_size, memory_size, epochs, learning_rate)
-# model.model.load_state_dict(torch.load('model/ownTry_accuracy:84.000_KNN_accuracy:84.000_increment:10_net.pkl'))
 
-for i in range(10):
-    args["task_id"] = i
-    run = wandb.init(
-        project="icarl1",
-        reinit=True,
-        config=args,
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Parameters for the script")
+    parser.add_argument(
+        '--epochs',
+        type=int,
+        default=10,
     )
-    wandb.watch(model.model)
-    model.beforeTrain()
-    accuracy = model.train()
-    model.afterTrain(accuracy)
-    run.finish()
+    parser.add_argument(
+        '--online',
+        action='store_true',
+    )
+    os.environ['WANDB_MODE'] = 'offline'
+    args = parser.parse_args()
+    if args.online:
+        os.environ['WANDB_MODE'] = 'online'
+    model = iCaRLmodel(numclass, feature_extractor, batch_size, task_size, memory_size, args.epochs, learning_rate)
+    # model.model.load_state_dict(torch.load('model/ownTry_accuracy:84.000_KNN_accuracy:84.000_increment:10_net.pkl'))
+    config["epochs"] = args.epochs
+
+    for i in range(10):
+        config["task_id"] = i+1
+        # print(config)
+        run = wandb.init(
+            project="icarl2",
+            reinit=True,
+            config=config,
+        )
+        wandb.watch(model.model)
+        model.beforeTrain()
+        accuracy = model.train()
+        model.afterTrain(accuracy,task_id=i+1)
+        run.finish()
