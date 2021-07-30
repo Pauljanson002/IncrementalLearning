@@ -194,7 +194,7 @@ class iCaRLmodel:
         self.model.train()
         KNN_accuracy = self._test(self.test_loader, 0)
         print("NMS accuracy：" + str(KNN_accuracy.item()))
-        filename = 'saved_models/accuracy_%.3f_KNN_accuracy_%.3f_increment_%d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
+        filename = 'saved_models/accuracy_%.3f_KNN_accuracy_%.3f_increment %d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
         torch.save(self.model, filename)
         self.old_model = torch.load(filename)
         self.old_model.to(device)
