@@ -8,7 +8,7 @@ import torch.optim as optim
 from .Network import network
 from IncrementalDatasets import IncrementalCIFAR100
 from torch.utils.data import DataLoader
-
+import wandb
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -129,6 +129,8 @@ class iCaRLmodel:
                         p['lr'] = self.learning_rate / 125
                     # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
                 print("change learning rate:%.3f" % (self.learning_rate / 100))
+            total_loss = 0.
+            total_images = 0
             for step, (indexs, images, target) in enumerate(self.train_loader):
                 images, target = images.to(device), target.to(device)
                 # output = self.model(images)
@@ -136,8 +138,16 @@ class iCaRLmodel:
                 opt.zero_grad()
                 loss_value.backward()
                 opt.step()
+                total_loss += loss_value.item()
+                total_images += images.size(0)
                 print('epoch:%d,step:%d,loss:%.3f' % (epoch, step, loss_value.item()))
             accuracy = self._test(self.test_loader, 1)
+            avg_loss = total_loss/total_images if total_images != 0 else 1000
+            wandb.log({
+                "epoch":epoch,
+                "training_avg_loss":avg_loss,
+                "test_accuracy":accuracy
+            })
             print('epoch:%d,accuracy:%.3f' % (epoch, accuracy))
         return accuracy
 
@@ -184,7 +194,7 @@ class iCaRLmodel:
         self.model.train()
         KNN_accuracy = self._test(self.test_loader, 0)
         print("NMS accuracy：" + str(KNN_accuracy.item()))
-        filename = 'model/accuracy_%.3f_KNN_accuracy_%.3f_increment:_d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
+        filename = 'saved_models/accuracy_%.3f_KNN_accuracy_%.3f_increment_%d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
         torch.save(self.model, filename)
         self.old_model = torch.load(filename)
         self.old_model.to(device)
