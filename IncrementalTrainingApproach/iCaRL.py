@@ -243,8 +243,9 @@ class iCaRLmodel:
         return data
 
     def compute_class_mean(self, images, transform):
-        x = self.Image_transform(images, transform).to(device)
-        feature_extractor_output = F.normalize(self.model.feature_extractor(x).detach()).cpu().numpy()
+        with torch.no_grad():
+            x = self.Image_transform(images, transform).to(device)
+            feature_extractor_output = F.normalize(self.model.feature_extractor(x).detach()).cpu().numpy()
         # feature_extractor_output = self.model.feature_extractor(x).detach().cpu().numpy()
         class_mean = np.mean(feature_extractor_output, axis=0)
         return class_mean, feature_extractor_output

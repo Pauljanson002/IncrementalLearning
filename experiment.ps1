@@ -1,0 +1,1 @@
+python -u train.py --epochs 2 --project_name icarlonvit --feature_extractor vit_lite
