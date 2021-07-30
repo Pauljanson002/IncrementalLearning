@@ -10,7 +10,7 @@ img_size = 32
 batch_size = 128
 task_size = 10
 memory_size = 2000
-epochs = 10
+epochs = 100
 learning_rate = 2.0
 
 args = dict(
