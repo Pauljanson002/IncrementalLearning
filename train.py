@@ -71,7 +71,6 @@ if __name__ == '__main__':
     config["epochs"] = args.epochs
     config["batch_size"] = args.batch_size
     config["learning_rate"] = args.learning_rate
-    # wandb.watch(model.model)
 
     for i in range(10):
         config["task_id"] = i+1
@@ -81,6 +80,9 @@ if __name__ == '__main__':
             reinit=True,
             config=config,
         )
+        wandb.run.name = f"task_id : {i+1}"
+        if i == 0:
+            wandb.watch(model.model)
         model.beforeTrain()
         accuracy = model.train()
         model.afterTrain(accuracy,task_id=i+1)

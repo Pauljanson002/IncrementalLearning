@@ -1,6 +1,7 @@
 import torch
 from torch.nn import Module, Linear, Dropout, LayerNorm, Identity
-from layers import Attention,DropPath
+from layers import Attention
+from layers.DropPath import DropPath
 import torch.nn.functional as F
 
 

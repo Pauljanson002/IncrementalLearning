@@ -41,7 +41,7 @@ class ViTLite(nn.Module):
 
 def vit_lite_100_feature_extractor():
     model = ViTLite(
-        num_layers=7,
+        num_layers=14,
         num_heads=4,
         mlp_ratio=2,
         embedding_dim=512,
