@@ -4,4 +4,8 @@
 
 
 ########################################## icarl using cct7 ####################################################################
-python -u train.py --epochs 2 --project_name icarloncct7_h --feature_extractor cct7_h --batch_size 32 --learning_rate 0.001 --online
+######## No augmentations ######################################################################################################
+#python -u train.py --epochs 2 --project_name icarloncct7_h --feature_extractor cct7_h --batch_size 32 --learning_rate 0.001 --online
+
+#########################################icarl using cct7 with different  learning rate
+python -u train.py --epochs 2 --project_name icarloncct7_h_2 --feature_extractor cct7_h --batch_size 32 --learning_rate 2

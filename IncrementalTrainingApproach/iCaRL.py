@@ -108,33 +108,32 @@ class iCaRLmodel:
     def train(self):
         accuracy = 0
         opt = optim.SGD(self.model.parameters(), lr=self.learning_rate, weight_decay=0.00001)
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(opt,self.epochs)
         for epoch in range(self.epochs):
-            # if epoch == 48:
-            #     if self.numclass == self.task_size:
-            #         print(1)
-            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 5, weight_decay=0.00001)
-            #     else:
-            #         for p in opt.param_groups:
-            #             p['lr'] = self.learning_rate / 5
-            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 5,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-            #     print("change learning rate:%.3f" % (self.learning_rate / 5))
-            # elif epoch == 62:
-            #     if self.numclass > self.task_size:
-            #         for p in opt.param_groups:
-            #             p['lr'] = self.learning_rate / 25
-            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 25,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-            #     else:
-            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 25, weight_decay=0.00001)
-            #     print("change learning rate:%.3f" % (self.learning_rate / 25))
-            # elif epoch == 80:
-            #     if self.numclass == self.task_size:
-            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 125, weight_decay=0.00001)
-            #     else:
-            #         for p in opt.param_groups:
-            #             p['lr'] = self.learning_rate / 125
-            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-            #     print("change learning rate:%.3f" % (self.learning_rate / 100))
+            if epoch == 48:
+                if self.numclass == self.task_size:
+                    print(1)
+                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 5, weight_decay=0.00001)
+                else:
+                    for p in opt.param_groups:
+                        p['lr'] = self.learning_rate / 5
+                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 5,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+                print("change learning rate:%.3f" % (self.learning_rate / 5))
+            elif epoch == 62:
+                if self.numclass > self.task_size:
+                    for p in opt.param_groups:
+                        p['lr'] = self.learning_rate / 25
+                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 25,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+                else:
+                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 25, weight_decay=0.00001)
+                print("change learning rate:%.3f" % (self.learning_rate / 25))
+            elif epoch == 80:
+                if self.numclass == self.task_size:
+                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 125, weight_decay=0.00001)
+                else:
+                    for p in opt.param_groups:
+                        p['lr'] = self.learning_rate / 125
+                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+                print("change learning rate:%.3f" % (self.learning_rate / 100))
 
             total_loss = 0.
             total_images = 0
@@ -157,7 +156,6 @@ class iCaRLmodel:
                 "test_accuracy":accuracy
             })
             print('epoch:%d,accuracy:%.3f' % (epoch, accuracy))
-            scheduler.step()
         return accuracy
 
     def _test(self, testloader, mode):
