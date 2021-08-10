@@ -1,3 +1,5 @@
+import math
+
 import torch.nn as nn
 import torch
 from torchvision import transforms
@@ -6,13 +8,14 @@ from torch.nn import functional as F
 from PIL import Image
 import torch.optim as optim
 from tqdm import tqdm
-
+from augmentations import CIFAR10Policy
 from .Network import network
 from IncrementalDatasets import IncrementalCIFAR100
 from torch.utils.data import DataLoader
-from utils import ensure_dir,save_checkpoint,load_checkpoint
+from utils import ensure_dir, save_checkpoint, load_checkpoint
 import copy
 import wandb
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -20,6 +23,17 @@ def get_one_hot(target, num_class):
     one_hot = torch.zeros(target.shape[0], num_class).to(device)
     one_hot = one_hot.scatter(dim=1, index=target.long().view(-1, 1), value=1.)
     return one_hot
+
+
+def adjust_learning_rate(optimizer, epoch, learning_rate, final_epoch, warmup=0):
+    lr = learning_rate
+    if warmup > 0 and epoch < warmup:
+        lr = lr / (warmup - epoch)
+    else:
+        lr *= 0.5 * (1. + math.cos(math.pi * (epoch - warmup) / (final_epoch - warmup)))
+
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 class iCaRLmodel:
@@ -40,9 +54,10 @@ class iCaRLmodel:
 
         self.train_transform = transforms.Compose([  # transforms.Resize(img_size),
             # Todo Make it changable by arguments
-            transforms.RandomCrop((32, 32), padding=4),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.24705882352941178),
+            CIFAR10Policy(),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            # transforms.ColorJitter(brightness=0.24705882352941178),
             transforms.ToTensor(),
             transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
 
@@ -57,7 +72,8 @@ class iCaRLmodel:
                                                                            (0.2675, 0.2565, 0.2761))])
 
         self.train_dataset = IncrementalCIFAR100('dataset', transform=self.train_transform, download=True)
-        self.test_dataset = IncrementalCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
+        self.test_dataset = IncrementalCIFAR100('dataset', test_transform=self.test_transform, train=False,
+                                                download=True)
 
         self.batchsize = batch_size
         self.memory_size = memory_size
@@ -107,37 +123,38 @@ class iCaRLmodel:
     # evaluate model
     def train(self):
         accuracy = 0
-        opt = optim.SGD(self.model.parameters(), lr=self.learning_rate, weight_decay=0.00001)
-        for epoch in range(self.epochs):
-            if epoch == 48:
-                if self.numclass == self.task_size:
-                    print(1)
-                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 5, weight_decay=0.00001)
-                else:
-                    for p in opt.param_groups:
-                        p['lr'] = self.learning_rate / 5
-                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 5,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-                print("change learning rate:%.3f" % (self.learning_rate / 5))
-            elif epoch == 62:
-                if self.numclass > self.task_size:
-                    for p in opt.param_groups:
-                        p['lr'] = self.learning_rate / 25
-                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 25,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-                else:
-                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 25, weight_decay=0.00001)
-                print("change learning rate:%.3f" % (self.learning_rate / 25))
-            elif epoch == 80:
-                if self.numclass == self.task_size:
-                    opt = optim.SGD(self.model.parameters(), lr=1.0 / 125, weight_decay=0.00001)
-                else:
-                    for p in opt.param_groups:
-                        p['lr'] = self.learning_rate / 125
-                    # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
-                print("change learning rate:%.3f" % (self.learning_rate / 100))
-
+        # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate, weight_decay=0.00001)
+        opt = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=3e-2)
+        for epoch in range(1,self.epochs+1):
+            # if epoch == 48:
+            #     if self.numclass == self.task_size:
+            #         print(1)
+            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 5, weight_decay=0.00001)
+            #     else:
+            #         for p in opt.param_groups:
+            #             p['lr'] = self.learning_rate / 5
+            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 5,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+            #     print("change learning rate:%.3f" % (self.learning_rate / 5))
+            # elif epoch == 62:
+            #     if self.numclass > self.task_size:
+            #         for p in opt.param_groups:
+            #             p['lr'] = self.learning_rate / 25
+            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate/ 25,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+            #     else:
+            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 25, weight_decay=0.00001)
+            #     print("change learning rate:%.3f" % (self.learning_rate / 25))
+            # elif epoch == 80:
+            #     if self.numclass == self.task_size:
+            #         opt = optim.SGD(self.model.parameters(), lr=1.0 / 125, weight_decay=0.00001)
+            #     else:
+            #         for p in opt.param_groups:
+            #             p['lr'] = self.learning_rate / 125
+            #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
+            #     print("change learning rate:%.3f" % (self.learning_rate / 100))
+            adjust_learning_rate(opt,epoch,self.learning_rate,self.epochs,5)
             total_loss = 0.
             total_images = 0
-            for step, (indexs, images, target) in tqdm(enumerate(self.train_loader),total=len(self.train_loader),
+            for step, (indexs, images, target) in tqdm(enumerate(self.train_loader), total=len(self.train_loader),
                                                        desc='Training'):
                 images, target = images.to(device), target.to(device)
                 # output = self.model(images)
@@ -149,11 +166,11 @@ class iCaRLmodel:
                 total_images += images.size(0)
                 # print('epoch:%d,step:%d,loss:%.3f' % (epoch, step, loss_value.item()))
             accuracy = self._test(self.test_loader, 1)
-            avg_loss = total_loss/total_images if total_images != 0 else 1000
+            avg_loss = total_loss / total_images if total_images != 0 else 1000
             wandb.log({
-                "epoch":epoch,
-                "training_avg_loss":avg_loss,
-                "test_accuracy":accuracy
+                "epoch": epoch,
+                "training_avg_loss": avg_loss,
+                "test_accuracy": accuracy
             })
             print('epoch:%d,accuracy:%.3f' % (epoch, accuracy))
         return accuracy
@@ -163,7 +180,7 @@ class iCaRLmodel:
             print("compute NMS")
         self.model.eval()
         correct, total = 0, 0
-        for setp, (indexs, imgs, labels) in tqdm(enumerate(testloader),desc="Testing",total=len(testloader)):
+        for setp, (indexs, imgs, labels) in tqdm(enumerate(testloader), desc="Testing", total=len(testloader)):
             imgs, labels = imgs.to(device), labels.to(device)
             with torch.no_grad():
                 outputs = self.model(imgs) if mode == 1 else self.classify(imgs)
@@ -188,7 +205,7 @@ class iCaRLmodel:
             return F.binary_cross_entropy_with_logits(output, target)
 
     # change the size of examplar
-    def afterTrain(self, accuracy,task_id):
+    def afterTrain(self, accuracy, task_id):
         self.model.eval()
         m = int(self.memory_size / self.numclass)
         self._reduce_exemplar_sets(m)
@@ -202,14 +219,14 @@ class iCaRLmodel:
         KNN_accuracy = self._test(self.test_loader, 0)
         print("NMS accuracy：" + str(KNN_accuracy.item()))
         directory = '/checkpoint'
-        filename = directory+f'/task_id_{task_id}'
+        filename = directory + f'/task_id_{task_id}'
         state = {
-            'net':self.model.state_dict(),
-            'task_id':task_id,
-            'optim':None,
+            'net': self.model.state_dict(),
+            'task_id': task_id,
+            'optim': None,
         }
         ensure_dir(directory)
-        save_checkpoint(state,filename)
+        save_checkpoint(state, filename)
         self.old_model = copy.deepcopy(self.model)
         self.old_model.to(device)
         self.old_model.load_state_dict(load_checkpoint(filename)['net'])

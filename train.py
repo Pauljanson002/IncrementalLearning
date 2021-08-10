@@ -26,7 +26,7 @@ config = dict(
     batch_size=128,
     task_size=10,
     memory_size=2000,
-    learning_rate=0.1,
+    learning_rate=0.0005,
 )
 
 
