@@ -121,11 +121,17 @@ class iCaRLmodel:
     # train model
     # compute loss
     # evaluate model
-    def train(self):
+    def train(self, resume=False, task_id=1):
+        if resume:
+            print("loading from previous state dict")
+            directory = './checkpoint'
+            filename = directory + f'/task_id_{task_id}'
+            self.model.load_state_dict(load_checkpoint(filename)['net'])
+            return load_checkpoint(filename)['accuracy']
         accuracy = 0
         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate, weight_decay=0.00001)
         opt = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=3e-2)
-        for epoch in range(1,self.epochs+1):
+        for epoch in range(1, self.epochs + 1):
             # if epoch == 48:
             #     if self.numclass == self.task_size:
             #         print(1)
@@ -151,7 +157,7 @@ class iCaRLmodel:
             #             p['lr'] = self.learning_rate / 125
             #         # opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
             #     print("change learning rate:%.3f" % (self.learning_rate / 100))
-            adjust_learning_rate(opt,epoch,self.learning_rate,self.epochs,5)
+            adjust_learning_rate(opt, epoch, self.learning_rate, self.epochs, 5)
             total_loss = 0.
             total_images = 0
             for step, (indexs, images, target) in tqdm(enumerate(self.train_loader), total=len(self.train_loader),
@@ -205,7 +211,7 @@ class iCaRLmodel:
             return F.binary_cross_entropy_with_logits(output, target)
 
     # change the size of examplar
-    def afterTrain(self, accuracy, task_id):
+    def afterTrain(self, task_id, no_save=False):
         self.model.eval()
         m = int(self.memory_size / self.numclass)
         self._reduce_exemplar_sets(m)
@@ -218,19 +224,22 @@ class iCaRLmodel:
         self.model.train()
         KNN_accuracy = self._test(self.test_loader, 0)
         print("NMS accuracy：" + str(KNN_accuracy.item()))
-        directory = '/checkpoint'
+        # Saving old model
+        self.old_model = copy.deepcopy(self.model)
+        self.old_model.to(device)
+        self.old_model.eval()
+        if no_save:
+            return
+        directory = './checkpoint'
         filename = directory + f'/task_id_{task_id}'
         state = {
             'net': self.model.state_dict(),
             'task_id': task_id,
+            'accuracy':KNN_accuracy,
             'optim': None,
         }
         ensure_dir(directory)
         save_checkpoint(state, filename)
-        self.old_model = copy.deepcopy(self.model)
-        self.old_model.to(device)
-        self.old_model.load_state_dict(load_checkpoint(filename)['net'])
-        self.old_model.eval()
 
     def _construct_exemplar_set(self, images, m):
         class_mean, feature_extractor_output = self.compute_class_mean(images, self.transform)
