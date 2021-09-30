@@ -14,6 +14,7 @@ class network(nn.Module):
         return x
 
     def Incremental_learning(self, numclass):
+        self.feature.tokenizer.requires_grad_(False)
         weight = self.fc.weight.data
         bias = self.fc.bias.data
         in_feature = self.fc.in_features

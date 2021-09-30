@@ -16,4 +16,4 @@
 #python -u train.py --epochs 6 --project_name icarloncct7_h_adam --feature_extractor cct7_h --batch_size 32 --learning_rate 0.0005
 
 ###########################################icarl on cct7 with adamw and augmentations with resuming #############################
-python -u train.py --epochs 6 --project_name icarloncct7_h_adam_res --feature_extractor cct7_h --batch_size 32 --learning_rate 0.0005 --task_id 3
+python -u train.py --epochs 6 --project_name icarloncct7_h_freeze_conv --feature_extractor cct7_h --batch_size 64 --learning_rate 0.0005 --task_id 1
