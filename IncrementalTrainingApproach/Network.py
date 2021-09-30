@@ -14,7 +14,9 @@ class network(nn.Module):
         return x
 
     def Incremental_learning(self, numclass):
+        print("Freezing tokenizer")
         self.feature.tokenizer.requires_grad_(False)
+        print([param.requires_grad for param in self.feature.tokenizer.parameters()])
         weight = self.fc.weight.data
         bias = self.fc.bias.data
         in_feature = self.fc.in_features
