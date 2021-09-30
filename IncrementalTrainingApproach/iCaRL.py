@@ -38,7 +38,8 @@ def adjust_learning_rate(optimizer, epoch, learning_rate, final_epoch, warmup=0)
 
 class iCaRLmodel:
 
-    def __init__(self, numclass, feature_extractor, batch_size, task_size, memory_size, epochs, learning_rate):
+    def __init__(self, numclass, feature_extractor, batch_size, task_size, memory_size, epochs, learning_rate,
+                 regularize=True):
 
         super(iCaRLmodel, self).__init__()
         self.epochs = epochs
@@ -81,6 +82,7 @@ class iCaRLmodel:
 
         self.train_loader = None
         self.test_loader = None
+        self.regularize = regularize
 
     # get incremental train data
     # incremental
@@ -201,14 +203,22 @@ class iCaRLmodel:
         output = self.model(imgs)
         target = get_one_hot(target, self.numclass)
         output, target = output.to(device), target.to(device)
+        loss = torch.zeros([1])
         if self.old_model == None:
-            return F.binary_cross_entropy_with_logits(output, target)
+            loss = F.binary_cross_entropy_with_logits(output, target)
         else:
             # old_target = torch.tensor(np.array([self.old_model_output[index.item()] for index in indexs]))
             old_target = torch.sigmoid(self.old_model(imgs))
             old_task_size = old_target.shape[1]
             target[..., :old_task_size] = old_target
-            return F.binary_cross_entropy_with_logits(output, target)
+            loss = F.binary_cross_entropy_with_logits(output, target)
+        if self.regularize and self.old_model is not None:
+           # print("Regularizing")
+            for i in range(len(self.old_model.feature.classifier.blocks)):
+                x = self.old_model.feature.classifier.blocks[i].self_attn.qkv.weight.data
+                y = self.model.feature.classifier.blocks[i].self_attn.qkv.weight.data
+                loss += F.kl_div(y,x,reduction="batchmean")
+        return loss
 
     # change the size of examplar
     def afterTrain(self, task_id, no_save=False):
@@ -235,7 +245,7 @@ class iCaRLmodel:
         state = {
             'net': self.model.state_dict(),
             'task_id': task_id,
-            'accuracy':KNN_accuracy,
+            'accuracy': KNN_accuracy,
             'optim': None,
         }
         ensure_dir(directory)

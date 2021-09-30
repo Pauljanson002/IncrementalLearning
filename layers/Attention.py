@@ -17,7 +17,7 @@ class Attention(Module):
         self.proj = Linear(dim, dim)
         self.proj_drop = Dropout(projection_dropout)
 
-    def forward(self, x):
+    def forward(self, x, return_attn=False):
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
@@ -29,4 +29,7 @@ class Attention(Module):
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
-        return x
+        if return_attn:
+            return x, attn
+        else:
+            return x
