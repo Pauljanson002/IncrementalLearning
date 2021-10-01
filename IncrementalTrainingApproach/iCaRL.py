@@ -200,7 +200,7 @@ class iCaRLmodel:
         return accuracy
 
     def _compute_loss(self, indexs, imgs, target):
-        alpha = 0.1
+        alpha = 0
         output = self.model(imgs)
         target = get_one_hot(target, self.numclass)
         output, target = output.to(device), target.to(device)
