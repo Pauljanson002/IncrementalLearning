@@ -200,6 +200,7 @@ class iCaRLmodel:
         return accuracy
 
     def _compute_loss(self, indexs, imgs, target):
+        alpha = 0.1
         output = self.model(imgs)
         target = get_one_hot(target, self.numclass)
         output, target = output.to(device), target.to(device)
@@ -217,7 +218,7 @@ class iCaRLmodel:
             for i in range(len(self.old_model.feature.classifier.blocks)):
                 x = self.old_model.feature.classifier.blocks[i].self_attn.qkv.weight.data
                 y = self.model.feature.classifier.blocks[i].self_attn.qkv.weight.data
-                loss += F.kl_div(y,x,reduction="batchmean")
+                loss += alpha *  F.kl_div(y,x,reduction="batchmean")
         return loss
 
     # change the size of examplar
